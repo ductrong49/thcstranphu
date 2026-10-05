@@ -123,6 +123,7 @@
             letter-spacing: 0.3px;
         }
 
+        /* --- MORNING STYLES --- */
         .class-7a6 .session-morning {
             background-color: #ec407a !important;
             color: #ffffff !important;
@@ -139,7 +140,11 @@
             letter-spacing: 1px;
             font-size: 0.95em;
         }
+        .class-7a6 .morning-odd td { background-color: #fce4ec; color: #880e4f; font-weight: 700; }
+        .class-9a9 .morning-odd td { background-color: #e1f5fe; color: #01579b; font-weight: 700; }
+        .class-7a6 .morning-even td, .class-9a9 .morning-even td { background-color: #ffffff; color: #444; font-weight: 700; }
 
+        /* --- AFTERNOON STYLES --- */
         .class-7a6 .session-afternoon {
             background-color: #880e4f !important;
             color: #ffffff !important;
@@ -156,22 +161,32 @@
             letter-spacing: 1px;
             font-size: 0.95em;
         }
-
-        .afternoon-start td {
-            border-top: 4px solid #546e7a !important;
-        }
-
-        .class-7a6 .morning-odd td { background-color: #fce4ec; color: #880e4f; font-weight: 700; }
-        .class-9a9 .morning-odd td { background-color: #e1f5fe; color: #01579b; font-weight: 700; }
-
-        .class-7a6 .morning-even td,
-        .class-9a9 .morning-even td { background-color: #ffffff; color: #444; font-weight: 700; }
-
+        .afternoon-start td { border-top: 4px solid #546e7a !important; }
         .class-7a6 .afternoon-odd td { background-color: #f8bbd0; color: #880e4f; font-weight: 700; }
         .class-9a9 .afternoon-odd td { background-color: #b3e5fc; color: #01579b; font-weight: 700; }
+        .class-7a6 .afternoon-even td, .class-9a9 .afternoon-even td { background-color: #f5f5f5; color: #444; font-weight: 700; }
 
-        .class-7a6 .afternoon-even td,
-        .class-9a9 .afternoon-even td { background-color: #f5f5f5; color: #444; font-weight: 700; }
+        /* --- EXTRA (HỌC THÊM) STYLES --- */
+        .class-7a6 .session-extra {
+            background-color: #7e57c2 !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.95em;
+        }
+        .class-9a9 .session-extra {
+            background-color: #5c6bc0 !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.95em;
+        }
+        .extra-start td { border-top: 4px solid #546e7a !important; }
+        .class-7a6 .extra-odd td { background-color: #ede7f6; color: #4527a0; font-weight: 700; }
+        .class-9a9 .extra-odd td { background-color: #e8eaf6; color: #283593; font-weight: 700; }
+        .class-7a6 .extra-even td, .class-9a9 .extra-even td { background-color: #ffffff; color: #444; font-weight: 700; }
 
         .empty-cell { color: #bdbdbd !important; font-weight: 400 !important; }
 
@@ -340,12 +355,14 @@
         // ===== 2. CẤU HÌNH VÙNG DỮ LIỆU (1-based indexing: Dòng 1 = 1, Cột A = 1) =====
         const DATA_RANGES = {
             '7a6': {
-                morning:    { startRow: 4, endRow: 8,  startCol: 2, endCol: 9 }, // Dòng 5-9, Cột C-J
-                afternoon:  { startRow: 9, endRow: 13, startCol: 2, endCol: 9 } // Dòng 10-14, Cột C-J
+                morning:    { startRow: 4, endRow: 8,  startCol: 2, endCol: 9, label: 'Sáng' },
+                afternoon:  { startRow: 9, endRow: 13, startCol: 2, endCol: 9, label: 'Chiều' },
+                extra:      { startRow: 14, endRow: 15, startCol: 2, endCol: 9, label: 'Học thêm' } // B14:I15
             },
             '9a9': {
-                morning:    { startRow: 17, endRow: 21, startCol: 2, endCol: 9 }, // Dòng 19-23, Cột C-J
-                afternoon:  { startRow: 22, endRow: 26, startCol: 2, endCol: 9 }  // Dòng 24-28, Cột C-J
+                morning:    { startRow: 17, endRow: 21, startCol: 2, endCol: 9, label: 'Sáng' },
+                afternoon:  { startRow: 22, endRow: 26, startCol: 2, endCol: 9, label: 'Chiều' },
+                extra:      { startRow: 27, endRow: 27, startCol: 2, endCol: 9, label: 'Học thêm' } // B27:I27
             }
         };
         
@@ -392,66 +409,58 @@
             return !value || value === '' || value === '-' || value === '​'; 
         }
 
-        function createPeriodRowHTML(cells, periodClass, isAfternoonStart = false) {
-            const rowClass = isAfternoonStart ? `${periodClass} afternoon-start` : periodClass;
-            let html = `<tr class="${rowClass}">`;
+        // ===== 4. RENDER BẢNG (Được tối ưu để xử lý động số dòng) =====
+        function renderSessionBlock(ranges, sessionKey, classId, data) {
+            if (!ranges[sessionKey]) return '';
+            const range = ranges[sessionKey];
+            const rowCount = range.endRow - range.startRow + 1;
+            let html = '';
             
-            cells.forEach(cell => {
-                html += isEmpty(cell) ? `<td class="empty-cell">-</td>` : `<td>${cell}</td>`;
-            });
-            
-            html += '</tr>';
+            for (let i = 0; i < rowCount; i++) {
+                const sheetRow = range.startRow + i;
+                const cells = [];
+                for (let col = range.startCol; col <= range.endCol; col++) {
+                    cells.push(getCellValue(data, sheetRow, col));
+                }
+                
+                // Xác định class CSS cho chẵn/lẻ
+                let periodClass = '';
+                if (sessionKey === 'morning') periodClass = i % 2 === 0 ? 'morning-odd' : 'morning-even';
+                else if (sessionKey === 'afternoon') periodClass = i % 2 === 0 ? 'afternoon-odd' : 'afternoon-even';
+                else if (sessionKey === 'extra') periodClass = i % 2 === 0 ? 'extra-odd' : 'extra-even';
+
+                const isStart = i === 0;
+                let rowClass = periodClass;
+                if (isStart && sessionKey === 'afternoon') rowClass += ' afternoon-start';
+                if (isStart && sessionKey === 'extra') rowClass += ' extra-start';
+
+                html += `<tr class="${rowClass}">`;
+                
+                // Ô gộp "Buổi" chỉ hiển thị ở dòng đầu tiên của block
+                if (isStart) {
+                    const sessionClass = sessionKey === 'morning' ? 'session-morning' : 
+                                         sessionKey === 'afternoon' ? 'session-afternoon' : 'session-extra';
+                    html += `<td rowspan="${rowCount}" class="${sessionClass}">${range.label}</td>`;
+                }
+                
+                cells.forEach(cell => {
+                    html += isEmpty(cell) ? `<td class="empty-cell">-</td>` : `<td>${cell}</td>`;
+                });
+                html += '</tr>';
+            }
             return html;
         }
 
-        // ===== 4. RENDER BẢNG =====
         function renderClassTable(classId, data) {
             const tbody = document.getElementById(`tbody-${classId}`);
             const ranges = DATA_RANGES[classId];
             let html = '';
             
-            // Render Buổi Sáng
-            for (let i = 0; i < 5; i++) {
-                const sheetRow = ranges.morning.startRow + i;
-                const cells = [];
-                for (let col = ranges.morning.startCol; col <= ranges.morning.endCol; col++) {
-                    cells.push(getCellValue(data, sheetRow, col));
-                }
-                
-                const periodClass = i % 2 === 0 ? 'morning-odd' : 'morning-even';
-                
-                if (i === 0) {
-                    html += `<tr class="${periodClass}">`;
-                    html += `<td rowspan="5" class="session-morning">Sáng</td>`;
-                    cells.forEach(cell => {
-                        html += isEmpty(cell) ? `<td class="empty-cell">-</td>` : `<td>${cell}</td>`;
-                    });
-                    html += '</tr>';
-                } else {
-                    html += createPeriodRowHTML(cells, periodClass);
-                }
-            }
-            
-            // Render Buổi Chiều
-            for (let i = 0; i < 5; i++) {
-                const sheetRow = ranges.afternoon.startRow + i;
-                const cells = [];
-                for (let col = ranges.afternoon.startCol; col <= ranges.afternoon.endCol; col++) {
-                    cells.push(getCellValue(data, sheetRow, col));
-                }
-                
-                const periodClass = i % 2 === 0 ? 'afternoon-odd' : 'afternoon-even';
-                
-                if (i === 0) {
-                    html += `<tr class="${periodClass} afternoon-start">`;
-                    html += `<td rowspan="5" class="session-afternoon">Chiều</td>`;
-                    cells.forEach(cell => {
-                        html += isEmpty(cell) ? `<td class="empty-cell">-</td>` : `<td>${cell}</td>`;
-                    });
-                    html += '</tr>';
-                } else {
-                    html += createPeriodRowHTML(cells, periodClass, false);
-                }
+            // Render từng block: Sáng -> Chiều -> Học thêm (nếu có)
+            html += renderSessionBlock(ranges, 'morning', classId, data);
+            html += renderSessionBlock(ranges, 'afternoon', classId, data);
+            if (ranges.extra) {
+                html += renderSessionBlock(ranges, 'extra', classId, data);
             }
             
             tbody.innerHTML = html;
