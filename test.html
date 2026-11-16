@@ -36,38 +36,48 @@
             color: #1565c0;
             font-size: 1.5em;
             font-weight: 800;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
-        .header-subtitle {
-            color: #64b5f6;
-            font-size: 1em;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .week-info {
-            display: inline-block;
-            background: #fff3e0;
-            color: #e65100;
-            padding: 4px 16px;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 0.95em;
-            margin-bottom: 10px;
-        }
-
-        .datetime {
+        /* Dòng 1: Giờ & Ngày */
+        .datetime-line {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+        .time-val { font-weight: 800; color: #e65100; }
+        .date-val { font-weight: 700; color: #333; }
+        .separator { color: #ccc; }
+
+        /* Dòng 2: Tuần & Năm học */
+        .info-badges {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 8px;
             flex-wrap: wrap;
         }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 700;
+        }
+        .badge-week { background: #fff3e0; color: #e65100; }
+        .badge-year { background: #e3f2fd; color: #1565c0; }
 
-        .date-display { font-size: 1em; font-weight: 700; color: #333; }
-        .time-display { font-size: 1em; font-weight: 700; color: #e65100; }
-        .datetime-separator { color: #ccc; font-weight: 300; }
+        /* Dòng 3: Ngày cập nhật từ Sheet */
+        .sheet-update-info {
+            font-size: 0.85em;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+            min-height: 1.2em; /* Giữ chỗ tránh giật layout */
+        }
 
         .class-section {
             margin-bottom: 25px;
@@ -254,10 +264,8 @@
             body { padding: 5px; }
             .header { padding: 12px 8px; margin-bottom: 15px; }
             .header h1 { font-size: 1.2em; }
-            .header-subtitle { font-size: 0.9em; }
-            .week-info { font-size: 0.85em; padding: 3px 12px; }
-            .datetime { gap: 10px; }
-            .date-display, .time-display { font-size: 0.85em; }
+            .datetime-line { font-size: 0.9em; }
+            .badge { font-size: 0.8em; padding: 3px 10px; }
             .class-section { padding: 10px 5px; margin-bottom: 20px; }
             .class-title { font-size: 1.1em; margin-bottom: 10px; }
             table { font-size: 0.7em; }
@@ -269,8 +277,8 @@
             .header h1 { font-size: 1.1em; }
             table { font-size: 0.65em; }
             th, td { padding: 5px 1px; }
-            .datetime { flex-direction: column; gap: 5px; }
-            .datetime-separator { display: none; }
+            .datetime-line { flex-direction: column; gap: 2px; }
+            .separator { display: none; }
         }
 
         @media print {
@@ -283,13 +291,22 @@
     <div class="container">
         <div class="header">
             <h1>📚 Thời Khóa Biểu</h1>
-            <div class="header-subtitle">Năm học 2026 - 2027</div>
-            <div class="week-info">Tuần <span id="week-number">1</span></div>
-            <div class="datetime">
-                <div class="date-display" id="current-date">--</div>
-                <span class="datetime-separator">•</span>
-                <div class="time-display" id="current-time">--</div>
+            
+            <!-- Dòng 1: Giờ & Ngày -->
+            <div class="datetime-line">
+                <span class="time-val" id="current-time">--:--</span>
+                <span class="separator">•</span>
+                <span class="date-val" id="current-date">Thứ ..., ngày ...</span>
             </div>
+
+            <!-- Dòng 2: Tuần & Năm học -->
+            <div class="info-badges">
+                <span class="badge badge-week">Tuần <span id="week-number">1</span></span>
+                <span class="badge badge-year">Năm học 2026 - 2027</span>
+            </div>
+
+            <!-- Dòng 3: Thông tin cập nhật từ Sheet (Ô D1) -->
+            <div class="sheet-update-info" id="sheet-update-text">Đang tải thông tin...</div>
         </div>
 
         <!-- Lớp 7A6 -->
@@ -352,17 +369,17 @@
         // ===== 1. CẤU HÌNH GOOGLE SHEETS =====
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSPcpB9A2glEjMqqQpekznvgWJ1jcvif5rYOhTVkCbI6yrMVj7hD1wyNqXeCSyWx0Tcmc9-PlbC9LQO/pub?gid=859933321&single=true&output=csv';
         
-        // ===== 2. CẤU HÌNH VÙNG DỮ LIỆU (1-based indexing: Dòng 1 = 1, Cột A = 1) =====
+        // ===== 2. CẤU HÌNH VÙNG DỮ LIỆU (1-based indexing) =====
         const DATA_RANGES = {
             '7a6': {
                 morning:    { startRow: 4, endRow: 8,  startCol: 2, endCol: 9, label: 'Sáng' },
                 afternoon:  { startRow: 9, endRow: 13, startCol: 2, endCol: 9, label: 'Chiều' },
-                extra:      { startRow: 14, endRow: 15, startCol: 2, endCol: 9, label: 'Học thêm' } // B14:I15
+                extra:      { startRow: 14, endRow: 15, startCol: 2, endCol: 9, label: 'Học thêm' }
             },
             '9a9': {
                 morning:    { startRow: 17, endRow: 21, startCol: 2, endCol: 9, label: 'Sáng' },
                 afternoon:  { startRow: 22, endRow: 26, startCol: 2, endCol: 9, label: 'Chiều' },
-                extra:      { startRow: 27, endRow: 28, startCol: 2, endCol: 9, label: 'Học thêm' } // B27:I27
+                extra:      { startRow: 27, endRow: 28, startCol: 2, endCol: 9, label: 'Học thêm' }
             }
         };
         
@@ -372,12 +389,10 @@
         function parseCSV(text) {
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
             const result = [];
-            
             for (let line of lines) {
                 const row = [];
                 let current = '';
                 let inQuotes = false;
-                
                 for (let i = 0; i < line.length; i++) {
                     const char = line[i];
                     if (char === '"') {
@@ -398,7 +413,6 @@
         function getCellValue(data, sheetRow, sheetCol) {
             const csvRow = sheetRow - 1; 
             const csvCol = sheetCol - 1; 
-            
             if (data[csvRow] && data[csvRow][csvCol] !== undefined) {
                 return data[csvRow][csvCol].trim();
             }
@@ -409,7 +423,7 @@
             return !value || value === '' || value === '-' || value === '​'; 
         }
 
-        // ===== 4. RENDER BẢNG (Được tối ưu để xử lý động số dòng) =====
+        // ===== 4. RENDER BẢNG ĐỘNG =====
         function renderSessionBlock(ranges, sessionKey, classId, data) {
             if (!ranges[sessionKey]) return '';
             const range = ranges[sessionKey];
@@ -423,7 +437,6 @@
                     cells.push(getCellValue(data, sheetRow, col));
                 }
                 
-                // Xác định class CSS cho chẵn/lẻ
                 let periodClass = '';
                 if (sessionKey === 'morning') periodClass = i % 2 === 0 ? 'morning-odd' : 'morning-even';
                 else if (sessionKey === 'afternoon') periodClass = i % 2 === 0 ? 'afternoon-odd' : 'afternoon-even';
@@ -436,7 +449,6 @@
 
                 html += `<tr class="${rowClass}">`;
                 
-                // Ô gộp "Buổi" chỉ hiển thị ở dòng đầu tiên của block
                 if (isStart) {
                     const sessionClass = sessionKey === 'morning' ? 'session-morning' : 
                                          sessionKey === 'afternoon' ? 'session-afternoon' : 'session-extra';
@@ -456,7 +468,6 @@
             const ranges = DATA_RANGES[classId];
             let html = '';
             
-            // Render từng block: Sáng -> Chiều -> Học thêm (nếu có)
             html += renderSessionBlock(ranges, 'morning', classId, data);
             html += renderSessionBlock(ranges, 'afternoon', classId, data);
             if (ranges.extra) {
@@ -474,11 +485,19 @@
                 
                 const csvText = await response.text();
                 
-                // Chỉ render nếu dữ liệu thay đổi
                 if (csvText !== lastDataHash) {
                     lastDataHash = csvText;
                     const data = parseCSV(csvText);
                     
+                    // 1. Lấy thông tin cập nhật từ ô D1 (Dòng 1, Cột 4)
+                    const updateInfo = getCellValue(data, 1, 4);
+                    if (updateInfo) {
+                        document.getElementById('sheet-update-text').textContent = `📅 ${updateInfo}`;
+                    } else {
+                        document.getElementById('sheet-update-text').textContent = '';
+                    }
+
+                    // 2. Render bảng
                     renderClassTable('7a6', data);
                     renderClassTable('9a9', data);
                     
@@ -487,7 +506,6 @@
                     document.getElementById('table-9a9').style.display = 'table';
                     document.getElementById('loading-9a9').style.display = 'none';
                     
-                    console.log('✅ Dữ liệu đã được cập nhật tự động.');
                     highlightCurrentDay(new Date().getDay());
                 }
             } catch (error) {
@@ -495,8 +513,7 @@
                 document.getElementById('loading-7a6').style.display = 'none';
                 document.getElementById('loading-9a9').style.display = 'none';
                 
-                const errorMsg = `<div class="error-message">⚠️ Không thể tải dữ liệu từ Google Sheets.<br><small>${error.message}</small><br>Vui lòng kiểm tra kết nối mạng hoặc quyền chia sẻ Sheet.</div>`;
-                
+                const errorMsg = `<div class="error-message">⚠️ Không thể tải dữ liệu.<br><small>${error.message}</small></div>`;
                 document.getElementById('error-7a6').style.display = 'block';
                 document.getElementById('error-7a6').innerHTML = errorMsg;
                 document.getElementById('error-9a9').style.display = 'block';
@@ -507,16 +524,19 @@
         // ===== 6. TIỆN ÍCH NGÀY GIỜ =====
         function updateDateTime() {
             const now = new Date();
+            
+            // Format: HH:mm:ss
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+
+            // Format: Thứ ..., ngày dd/mm/yyyy
             const weekday = now.toLocaleDateString('vi-VN', { weekday: 'long' });
             const day = now.getDate();
             const month = now.getMonth() + 1;
             const year = now.getFullYear();
             document.getElementById('current-date').textContent = `${weekday}, ${day}/${month}/${year}`;
-
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
 
             calculateSchoolWeek(now);
         }
@@ -539,8 +559,8 @@
         }
 
         function highlightCurrentDay(dayOfWeek) {
-            if (dayOfWeek === 0) return; // Bỏ qua Chủ Nhật
-            const colIndex = dayOfWeek + 2; // T2=3, T3=4, ..., T7=8
+            if (dayOfWeek === 0) return;
+            const colIndex = dayOfWeek + 2; 
             
             document.querySelectorAll('table').forEach(table => {
                 table.querySelectorAll('th').forEach(th => th.classList.remove('current-day-header'));
@@ -554,10 +574,10 @@
         // ===== 7. KHỞI TẠO =====
         function init() {
             fetchAndUpdateData();
-            setInterval(fetchAndUpdateData, 120000); // Tự động kiểm tra cập nhật mỗi 2 phút
+            setInterval(fetchAndUpdateData, 120000); 
             
             updateDateTime();
-            setInterval(updateDateTime, 1000); // Cập nhật đồng hồ mỗi giây
+            setInterval(updateDateTime, 1000); 
         }
 
         window.addEventListener('DOMContentLoaded', init);
