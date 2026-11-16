@@ -492,7 +492,7 @@
                     // 1. Lấy thông tin cập nhật từ ô D1 (Dòng 1, Cột 4)
                     const updateInfo = getCellValue(data, 1, 4);
                     if (updateInfo) {
-                        document.getElementById('sheet-update-text').textContent = `📅 ${updateInfo}`;
+                        document.getElementById('sheet-update-text').textContent = `📅 Cập nhật ngày: ${updateInfo}`;
                     } else {
                         document.getElementById('sheet-update-text').textContent = '';
                     }
